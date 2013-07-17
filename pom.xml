@@ -22,5 +22,10 @@
   		<artifactId>spring-core</artifactId>
   		<version>3.2.3.RELEASE</version>
   	</dependency>
+  	<dependency>
+  		<groupId>com.kesoftware.imu</groupId>
+  		<artifactId>imu</artifactId>
+  		<version>1.0.03</version>
+  	</dependency>
   </dependencies>
 </project>
