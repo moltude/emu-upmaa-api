@@ -151,9 +151,10 @@ public class Connection {
 	}
 
 	/**
-	 * Closes the connection to the EMu Production server
-	 * @return True if successfully disconnected 
-	 * 			False if unsuccessful
+	 * Closes the connection to the EMu server
+	 * 
+	 * @return True if successfully disconnected<br> 
+	 * 		   False if unsuccessful
 	 */
 	public boolean disconnect() {
 		session.disconnect();
@@ -220,13 +221,41 @@ public class Connection {
 	}
 	
 	/**
+	 * 
+	 * @param key
+	 * @param fetch_columns
+	 * @return
+	 */
+	public Map search(long key, String fetch_columns) {
+		Module module = search(key);
+		try {
+			ModuleFetchResult mfr = module.fetch("start",0, 1, fetch_columns);
+			if(mfr.getCount() != 1)
+				return null;
+			return mfr.getRows()[0];
+		} catch (IMuException e) {
+			return null;
+		}
+	}
+	
+	/**
+	 * 
+	 * @param key
+	 * @param fetch_columns
+	 * @return
+	 */
+	public Map search(long key, String[] fetch_columns) {
+		return search(key, StringUtils.arrayToCommaDelimitedString(fetch_columns));
+	}
+	
+	/**
 	 * Search and return the results as a Map[] 
 	 * <br>
 	 * @param terms Search terms
 	 * @param fetch_columns Columns to return from EMu
 	 * @return Returns the requested columns from the matching records or null if there was an error 
 	 */
-	public Map [] new_search(Terms terms, String fetch_columns) {
+	public Map [] search(Terms terms, String fetch_columns) {
 		Module m = search(terms);
 		ModuleFetchResult mfr;
 		try {
@@ -362,7 +391,7 @@ public class Connection {
 		Terms terms = new Terms();
 		terms.add("CatObjectNumber", objectId);
 		this.connect();
-		Map [] results = new_search(terms, "CatObjectNumber,CathObjectName_tab");
+		Map [] results = search(terms, "CatObjectNumber,CathObjectName_tab");
 
 		for(Map row : results) {
 			if(row.getString("CatObjectNumber").equalsIgnoreCase(objectId))
