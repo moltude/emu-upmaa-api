@@ -341,6 +341,7 @@ public class Connection {
 				m.update("start", 0, 1, values);
 		} catch (Exception e) {
 			// TODO log4j ERROR msg
+			e.printStackTrace();
 			disconnect();
 			throw new IMuException("Error updating reocrds");
 		}
