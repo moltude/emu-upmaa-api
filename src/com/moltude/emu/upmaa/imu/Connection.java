@@ -1,7 +1,5 @@
 package com.moltude.emu.upmaa.imu;
 
-
-
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
@@ -27,8 +25,10 @@ import com.kesoftware.imu.Terms;
  */
 
 public class Connection {
+	// iMu seesion instance
 	private Session session;
-	private Map[] _rows;
+
+	// the module to connect to
 	private String module = null;
 	// imu properties
 	private String address	= null;
@@ -70,13 +70,9 @@ public class Connection {
 				System.exit(0);
 			}
 
-			// address of the emu server
-			address = properties.getProperty("host");			
-			// port imu is running on 
+			address = properties.getProperty("host");			 
 			port = new Integer(properties.getProperty("port")).intValue();
-			// username to connect as
 			user = properties.getProperty("user","emu");
-			// user password
 			pass = properties.getProperty("pass");
 			
 		} catch (FileNotFoundException fnfe) {
@@ -87,15 +83,15 @@ public class Connection {
 	}
 
 	/**
-	 * TODO fix this method to print to log4j
+	 * Prints the configuration properties
 	 */
+	@SuppressWarnings("unused")
 	private void printProperties () {
-//		connectionLogFile.appendLine("**** iMu Connection Properties ****");
-//		connectionLogFile.appendLine("Host = " + this.address);
-//		connectionLogFile.appendLine("Port = " + this.port );
-//		connectionLogFile.appendLine("User = " + this.user );
-//		// connectionLogFile.appendLine("Pass = " + this.pass );
-//		connectionLogFile.appendLine("**** END ****");
+		System.out.println("**** iMu Connection Properties ****");
+		System.out.println("Host = " + this.address);
+		System.out.println("Port = " + this.port );
+		System.out.println("User = " + this.user );
+		System.out.println("Pass = " + this.pass );
 	}
 
 	/**
@@ -110,25 +106,24 @@ public class Connection {
 		// This is all debugging until the dropped connection bug is resolved by 
 		// KE Software.
 		// While unable to connect and number of attempts less than 10
-		while (!isConnected && x < 10) { 
-			// TODO log4j logging 
-			// sleep for 5 seconds
-			Thread.currentThread();
+		while (!isConnected && x < 10) {
 			try {
+				// TODO log4j logging 
+				// sleep for 5 seconds
+				Thread.currentThread();
 				Thread.sleep(5000);
+				x += 1;
+				// try again but do not attempt more than 10 connections before fail
+				isConnected = doConnect();
 			} catch (InterruptedException e) {
-				
+				// TODO Auto-generated catch block
 			}
-			x = x + 1;
-			// log it
-			// try again but do not attempt more than 10 connections before fail
-			isConnected = doConnect();
 		} // end while
 		return isConnected;
 	} // end method
 
 	/**
-	 * Performs the actual connection to the imu sever 
+	 * Connection to the imu sever 
 	 * 
 	 * @return True on successful connection 
 	 * 			False if unsuccessful
@@ -171,12 +166,18 @@ public class Connection {
 	/**
 	 * Returns an instance of the Session
 	 * 
-	 * @return Session CON
+	 * @return Session instance
 	 */
 	public Session getSession() {
 		return session;
 	}
 
+	/**
+	 * 
+	 * SERACH METHODS
+	 * 
+	 */
+	
 	/**
 	 * Searches emu for the provided Terms
 	 * 
@@ -196,77 +197,14 @@ public class Connection {
 		}
 		return m;
 	}
-
-	/**
-	 * 
-	 * @return
-	 */
-	public Map[] getResults() {
-		return this._rows;
-	}
-
-	public boolean anyMatchingResults(Terms object) {
-		return this.anyMatchingResults(object, null);
-	}
-
-	/**
-	 * Search for emu records and returns true if any exist false if not
-	 * 
-	 * @param object
-	 * @return
-	 */
-	public boolean anyMatchingResults(Terms object, String fetchColumns) {
-		if (fetchColumns == null)
-			fetchColumns = "irn";
-		Module m = search(object);
-		try {
-			ModuleFetchResult results = m.fetch("start", 0, -1, fetchColumns);
-			_rows = results.getRows();
-			// if there are no resutls return false
-			if (_rows == null || _rows.length == 0) {
-				return false;
-			} else
-				return true;
-		} catch (IMuException e) {
-			// TODO Error log
-		}
-		return false;
-	}
-
-	/**
-	 * Queries EMu
-	 * 
-	 * @param object
-	 *            - The query to run
-	 * @return - The result of that query
-	 */
-	private Module doSearch(Terms object) {
-		try {
-			while (!isOpen()) {
-				Thread.currentThread();
-				Thread.sleep(1000);
-				connect();
-			}
-			Module m = new Module(module, session);
-			m.findTerms(object);
-			return m;
-		} catch (IMuException imuex) {
-			// TODO Error log
-			return null;
-		} catch (Exception e) {
-			// TODO Error log
-			disconnect();
-			return null;
-		}
-	}
-
+	
 	/**
 	 * Searches EMu for the supplied IRN
 	 * 
 	 * @param key
 	 * @return The result of that query
 	 */
-	public Module searchIRN(long key) {
+	public Module search(long key) {
 		try {
 			if (!isOpen()) {
 				connect();
@@ -279,6 +217,77 @@ public class Connection {
 			disconnect();
 			return null;
 		}
+	}
+	
+	/**
+	 * Search and return the results as a Map[] 
+	 * <br>
+	 * @param terms Search terms
+	 * @param fetch_columns Columns to return from EMu
+	 * @return Returns the requested columns from the matching records or null if there was an error 
+	 */
+	public Map [] new_search(Terms terms, String fetch_columns) {
+		Module m = search(terms);
+		ModuleFetchResult mfr;
+		try {
+			mfr = m.fetch("start",0, -1, fetch_columns);
+		} catch (IMuException e) {
+			return null;
+		}
+		
+		return mfr.getRows();
+	}
+
+	
+	/**
+	 * Queries EMu
+	 * 
+	 * @param terms The query to run
+	 * @return - The result of that query
+	 */
+	private Module doSearch(Terms terms) {
+		try {
+			// attempt to reconnect 4evr
+			// added because sometimes all the liceneses are in use...
+			while (!isOpen()) {
+				Thread.currentThread();
+				Thread.sleep(1000);
+				connect();
+			}
+			Module m = new Module(module, session);
+			m.findTerms(terms);
+			return m;
+		} catch (IMuException imuex) {
+			// TODO Error log
+			return null;
+		} catch (Exception e) {
+			// TODO Error log
+			disconnect();
+			return null;
+		}
+	}
+	
+	
+	/**
+	 * Search for emu records and returns true if any exist false if not
+	 * 
+	 * @param object
+	 * @return
+	 */
+	public boolean anyMatchingResults(Terms object) {
+		Module m = search(object);
+		try {
+			ModuleFetchResult results = m.fetch("start", 0, -1, "");
+			Map [] rows = results.getRows();
+			// if there are no resutls return false
+			if (rows == null || rows.length == 0) {
+				return false;
+			} else
+				return true;
+		} catch (IMuException e) {
+			// TODO Error log
+		}
+		return false;
 	}
 
 	/**
@@ -303,13 +312,6 @@ public class Connection {
 				m.update("start", 0, 1, values);
 		} catch (Exception e) {
 			// TODO log4j ERROR msg
-			
-//			connectionLogFile.appendLine("Error uploading data to EMu");
-//			connectionLogFile.appendLine("Map irn key: " + key);
-//			for (Entry<String, Object> entry : values.entrySet()) {
-//				connectionLogFile.appendLine("key=" + entry.getKey()
-//						+ ", value=" + entry.getValue());
-//			}
 			disconnect();
 			throw new IMuException("Error updating reocrds");
 		}
@@ -344,47 +346,29 @@ public class Connection {
 			Map newRecord = m.insert(metadata); 
 			return newRecord.getLong("irn"); 
 		} catch (Exception e) {
-			// TODO Cleanup error logging 
-			for(Iterator <String> iterator = metadata.keySet().iterator(); iterator.hasNext(); ) {
-				String key = iterator.next();
-				Object value = metadata.get(key);
-				
-				if(value instanceof String) {
-					// this.connectionLogFile.appendLine(key + " --> " + value.toString());
-				} else if (value instanceof String[] ) {
-					for(String val : (String [])value) {
-						// this.connectionLogFile.appendLine(key + " --> " + val);
-					}
-				}
-			}
-			
 			disconnect();
 			return -1;
 		}
 	}
 
 	/**
+	 * Search Emu CatObjectNumber field for objectId and return the CatObjectName_tab for the matching record, else return null
+	 * <br>
+	 * @param objectId - Object number to search for 
+	 * @return - Object Name as commas seperated string
 	 * 
-	 * @param objectId
-	 * @return
 	 */
 	public String getObjectName(String objectId) {
 		Terms terms = new Terms();
 		terms.add("CatObjectNumber", objectId);
 		this.connect();
-		Module m = this.search(terms);
-		try {
-			ModuleFetchResult mfr = m.fetch("start", 0, 1, "CatObjectName_tab");
-			Map[] results = mfr.getRows();
-			this.disconnect();
-			if(results.length == 1)
-				return StringUtils.arrayToCommaDelimitedString(results[0].getStrings("CatObjectName_tab") );
-			else 
-				return null;
+		Map [] results = new_search(terms, "CatObjectNumber,CathObjectName_tab");
 
-		} catch (IMuException e) {
-			this.disconnect();
-			return null;
+		for(Map row : results) {
+			if(row.getString("CatObjectNumber").equalsIgnoreCase(objectId))
+				return StringUtils.arrayToCommaDelimitedString(results[0].getStrings("CatObjectName_tab") );
 		}
+	
+		return null;
 	}
 }
