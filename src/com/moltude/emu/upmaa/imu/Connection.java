@@ -72,7 +72,7 @@ public class Connection {
 
 			address = properties.getProperty("host");			 
 			port = new Integer(properties.getProperty("port")).intValue();
-			user = properties.getProperty("user","emu");
+			user = properties.getProperty("user");
 			pass = properties.getProperty("pass");
 			
 		} catch (FileNotFoundException fnfe) {
@@ -306,7 +306,7 @@ public class Connection {
 	public boolean anyMatchingResults(Terms object) {
 		Module m = search(object);
 		try {
-			ModuleFetchResult results = m.fetch("start", 0, -1, "");
+			ModuleFetchResult results = m.fetch("start", 0, 1, "");
 			Map [] rows = results.getRows();
 			// if there are no resutls return false
 			if (rows == null || rows.length == 0) {
