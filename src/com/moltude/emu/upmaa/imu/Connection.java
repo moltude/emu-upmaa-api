@@ -86,7 +86,7 @@ public class Connection {
 	 * Prints the configuration properties
 	 */
 	@SuppressWarnings("unused")
-	private void printProperties () {
+	public void printProperties () {
 		System.out.println("**** iMu Connection Properties ****");
 		System.out.println("Host = " + this.address);
 		System.out.println("Port = " + this.port );
@@ -99,7 +99,7 @@ public class Connection {
 	 * 
 	 * @return True if it was successfully connected, False if unable to connect 
 	 */
-	public boolean connect() {
+	private boolean connect() {
 		int x = 0;
 		boolean isConnected = doConnect();
 
@@ -117,6 +117,7 @@ public class Connection {
 				isConnected = doConnect();
 			} catch (InterruptedException e) {
 				// TODO Auto-generated catch block
+				e.printStackTrace();
 			}
 		} // end while
 		return isConnected;
@@ -141,10 +142,17 @@ public class Connection {
 			// This is all debugging until the dropped connection bug is resolved by 
 			// KE Software.
 			// TODO Error log with imuex data
+			
+			imuex.printStackTrace();
+			this.printProperties();
 			session.disconnect();
+			System.out.println("Aborting for the sake of debugging");
+			System.exit(0);
 			return false;
+			
 		} catch (Exception e) {
 			// TODO Error log
+			e.printStackTrace();
 			session.disconnect();
 			return false;
 		}
@@ -157,6 +165,7 @@ public class Connection {
 	 * 		   False if unsuccessful
 	 */
 	public boolean disconnect() {
+		System.out.println("Disconnecting from " + session.getContext());
 		session.disconnect();
 		if(this.isOpen())
 			return false;
@@ -188,11 +197,13 @@ public class Connection {
 	public Module search(Terms object) {
 		Module m = doSearch(object);
 		while (m == null) {
-			Thread.currentThread();
+			System.out.println(" * Warning * m is null in search(terms)");
 			try {
+				Thread.currentThread();
 				Thread.sleep(10000);
 			} catch (InterruptedException e) {
-				// TODO Error log
+				System.out.println("** throwing in search(terms) ** ");
+				e.printStackTrace();
 			}
 			m = doSearch(object);
 		}
@@ -256,15 +267,49 @@ public class Connection {
 	 * @return Returns the requested columns from the matching records or null if there was an error 
 	 */
 	public Map [] search(Terms terms, String fetch_columns) {
-		Module m = search(terms);
+		
+		Module m = null;
+		
+		try {
+			// attempt to reconnect 4evr
+			// added because sometimes all the liceneses are in use...
+			while (!isOpen()) {
+				Thread.currentThread();
+				Thread.sleep(10000);
+				connect();
+			}
+			m = new Module(module, session);
+			m.findTerms(terms);
+			
+			System.out.println("doSearch(terms) m.getSession " + m.getSession().getContext());
+		} catch (IMuException imuex) {
+			disconnect();
+			// TODO Error log
+			imuex.printStackTrace();
+			return null;
+		} catch (Exception e) {
+			// TODO Error log
+			e.printStackTrace();
+			disconnect();
+			return null;
+		}
+		
 		ModuleFetchResult mfr;
 		try {
 			mfr = m.fetch("start",0, -1, fetch_columns);
 		} catch (IMuException e) {
+			e.printStackTrace();
+			disconnect();
 			return null;
 		}
 		
-		return mfr.getRows();
+		Map[] rows = mfr.getRows();
+		
+		if(disconnect())
+			System.out.println("Discconected from server in search (terms, columsn)");
+		else
+			System.out.println("Unable to disconect from sever");
+		return rows;
 	}
 
 	
@@ -280,17 +325,23 @@ public class Connection {
 			// added because sometimes all the liceneses are in use...
 			while (!isOpen()) {
 				Thread.currentThread();
-				Thread.sleep(1000);
+				Thread.sleep(10000);
 				connect();
 			}
 			Module m = new Module(module, session);
 			m.findTerms(terms);
+			
+			// System.out.println("doSearch(terms) m.getSession " + m.getSession().getContext());
+			
 			return m;
 		} catch (IMuException imuex) {
+			disconnect();
 			// TODO Error log
+			imuex.printStackTrace();
 			return null;
 		} catch (Exception e) {
 			// TODO Error log
+			e.printStackTrace();
 			disconnect();
 			return null;
 		}
@@ -339,6 +390,7 @@ public class Connection {
 				m.update("start", 0, 1, values, column);
 			else
 				m.update("start", 0, 1, values);
+			disconnect();
 		} catch (Exception e) {
 			// TODO log4j ERROR msg
 			e.printStackTrace();
@@ -378,6 +430,8 @@ public class Connection {
 		} catch (Exception e) {
 			disconnect();
 			return -1;
+		} finally {
+			disconnect();
 		}
 	}
 
